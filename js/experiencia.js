@@ -57,9 +57,9 @@
     embers: trackN([[0, 0], [15.6, 0], [16.5, 1], [21, 0.8], [24, 0], [60, 0]])
   };
 
-  // ---------- narración (subtítulo, texto hablado) ----------
+  // ---------- textos en pantalla (solo lectura, sin voz) ----------
   const LINEAS = [
-    [0.6, 4.9, 'Hace 66 millones de años, la Tierra era de los dinosaurios.', 'Hace sesenta y seis millones de años, la Tierra era de los dinosaurios.'],
+    [0.6, 4.9, 'Hace 66 millones de años, la Tierra era de los dinosaurios.'],
     [5.0, 9.7, 'Entre ellos, pequeños dinosaurios cubiertos de plumas.'],
     [10.6, 13.8, 'Hasta que un día, el cielo se encendió.'],
     [15.7, 19.9, 'Un asteroide de diez kilómetros impactó en Yucatán.'],
@@ -67,11 +67,10 @@
     [23.0, 27.0, 'Sin sol, tres de cada cuatro especies desaparecieron.'],
     [27.3, 32.6, 'Pero algunos, pequeños y emplumados, resistieron.'],
     [34.4, 37.7, 'Eran dinosaurios avianos.'],
-    [38.0, 43.4, 'En millones de años, sus descendientes cambiaron de forma, de pico, de plumaje…', 'En millones de años, sus descendientes cambiaron de forma, de pico, de plumaje,'],
-    [43.6, 47.7, '…y conquistaron cada rincón del planeta.', 'y conquistaron cada rincón del planeta.'],
+    [38.0, 43.4, 'En millones de años, sus descendientes cambiaron de forma, de pico, de plumaje…'],
+    [43.6, 47.7, '…y conquistaron cada rincón del planeta.'],
     [48.6, 51.2, 'Hoy los llamamos aves.'],
-    [51.4, 55.3, 'El cóndor, el flamenco, el picaflor: dinosaurios que nunca se fueron.'],
-    [56.0, 59.6, null, 'Las aves son los últimos dinosaurios.']
+    [51.4, 55.3, 'El cóndor, el flamenco, el picaflor: dinosaurios que nunca se fueron.']
   ];
 
   const DESTINO = [
@@ -79,28 +78,6 @@
     { sp: 'pinguino', nombre: 'Pingüino de Humboldt', modo: 'stand' },
     { sp: 'picaflor', nombre: 'Picaflor', modo: 'hover' }
   ];
-
-  // ---------- voz ----------
-  const Voz = {
-    voice: null, on: true,
-    pick() {
-      const vs = window.speechSynthesis ? speechSynthesis.getVoices() : [];
-      const es = vs.filter(v => /^es/i.test(v.lang));
-      const score = v => (/natural|online|neural/i.test(v.name) ? 10 : 0) + (/es-CL/i.test(v.lang) ? 6 : /es-(419|MX|US|AR|CO)/i.test(v.lang) ? 4 : 2) + (/google/i.test(v.name) ? 3 : 0);
-      es.sort((a, b) => score(b) - score(a));
-      this.voice = es[0] || null;
-    },
-    init() { if (!window.speechSynthesis) return; this.pick(); speechSynthesis.onvoiceschanged = () => this.pick(); },
-    say(txt, maxDur) {
-      if (!this.on || !window.speechSynthesis) return;
-      speechSynthesis.cancel();
-      const u = new SpeechSynthesisUtterance(txt);
-      if (this.voice) { u.voice = this.voice; u.lang = this.voice.lang; } else u.lang = 'es-CL';
-      u.rate = txt.length / Math.max(1.5, maxDur) > 15 ? 1.12 : 1.0; u.pitch = 0.92; u.volume = 1;
-      speechSynthesis.speak(u);
-    },
-    stop() { if (window.speechSynthesis) speechSynthesis.cancel(); }
-  };
 
   // ---------- HUD (texto en el campo visual, funciona en VR) ----------
   function HUD(camObj) {
@@ -162,7 +139,6 @@
       this.hud = HUD(this.cam.object3D);
       this.buildEvents();
       this.update(0, 0);
-      Voz.init();
       window.UV = this;
       this.el.addEventListener('enter-vr', () => { if (!this.running && !this.ended) { document.getElementById('inicio').classList.add('oculto'); this.start(0); } });
     },
@@ -389,7 +365,6 @@
         [53.4, () => S.rafaga(self.heroPos ? self.heroPos.clone() : p(0, 10, -30))]
       ];
       this.ejecta.forEach(e => ev.push([e.ts + e.dur, () => S.golpe(e.land)]));
-      LINEAS.forEach(l => ev.push([l[0], () => Voz.say(l[3] || l[2], l[1] - l[0] + 1)]));
       this.events = ev.sort((a, b) => a[0] - b[0]);
       this.evI = 0;
     },
@@ -403,7 +378,7 @@
       this.hud.redraw();
       document.getElementById('fin').classList.add('oculto');
     },
-    restart: function () { Voz.stop(); this.choice = -1; this.choiceT = -1; this.start(0); },
+    restart: function () { this.choice = -1; this.choiceT = -1; this.start(0); },
     seek: function (t) { this.T = t; this.evI = 0; while (this.evI < this.events.length && this.events[this.evI][0] < t) this.evI++; this.update(t, 0); },
     choose: function (i) {
       if (this.choice >= 0 || this.T < 24 || this.T > 33.4) return;
@@ -831,7 +806,6 @@
       comp.start(t0);
     });
     document.getElementById('btn-repetir').addEventListener('click', () => scene.components['ultimo-vuelo'].restart());
-    const voz = document.getElementById('chk-voz'); if (voz) voz.addEventListener('change', () => { Voz.on = voz.checked; });
     ['triggerdown'].forEach(evn => scene.addEventListener(evn, () => { const c = scene.components['ultimo-vuelo']; if (c.ended) c.restart(); }));
   });
 })();

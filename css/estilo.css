@@ -37,7 +37,5 @@ button {
 }
 button:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 14px 34px rgba(255,138,58,.5); }
 button:disabled { opacity: .55; cursor: wait; }
-.voz { display: block; margin-top: 16px; font-size: 13px; color: var(--suave); cursor: pointer; }
-.voz input { accent-color: var(--brasa); vertical-align: -2px; margin-right: 6px; }
 
 .a-enter-vr-button, .a-enter-ar-button { z-index: 30; }

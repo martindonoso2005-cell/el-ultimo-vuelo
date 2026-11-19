@@ -2,7 +2,7 @@
 
 **Concurso:** Chile Re-Descubre · Congreso Futuro
 **Tema:** Aves, los últimos dinosaurios
-**Formato:** experiencia web inmersiva (WebXR / A-Frame) en 3D Low Poly, cámara en primera persona, audio espacial
+**Formato:** experiencia web inmersiva (WebXR / A-Frame) en 3D Low Poly, cámara en primera persona, audio espacial. Sin voz en off: el relato se lee en pantalla.
 **Duración:** 60 segundos exactos
 
 **Idea central:** las aves no son simplemente descendientes de los dinosaurios: son dinosaurios avianos que siguen vivos en nuestro presente.
@@ -11,7 +11,7 @@
 
 ## Guion técnico
 
-| Tiempo | Escena | Descripción visual y acciones | Movimiento de cámara | Narración en off | Sonido y música | Interacción del espectador |
+| Tiempo | Escena | Descripción visual y acciones | Movimiento de cámara | Texto en pantalla | Sonido y música | Interacción del espectador |
 |---|---|---|---|---|---|---|
 | 0:00–0:05 | 1 · Un mundo lleno de vida | Atardecer cretácico rosado. Bosque de palmeras, cícadas y araucarias (que aún viven en Chile). Titanosaurios caminan a la izquierda, pterosaurios planean, montañas geométricas al fondo. Etiqueta 3D: «Titanosaurio». | Avance lento y bajo (*dolly*) entre la vegetación con un paneo suave de izquierda a derecha. | «Hace 66 millones de años, la Tierra era de los dinosaurios.» | Ambiente de selva (insectos pulsantes, viento suave), llamado grave de un saurópodo desde la izquierda, chillido de pterosaurio desde arriba. | Mirar libremente en 360° (arrastrando, moviendo el celular o con un visor VR). |
 | 0:05–0:10 | 1 · Un mundo lleno de vida | Junto al camino picotean tres pequeños dinosaurios emplumados (avianos) y un grupo de dromeosaurios. Un tiranosaurio cruza delante del espectador. Etiquetas: «Dinosaurios avianos», «Tiranosaurio». | Sigue el avance y el paneo termina frente al tiranosaurio. | «Entre ellos, pequeños dinosaurios cubiertos de plumas.» | Trinos espaciales que salen de los avianos, a la izquierda del espectador. | Los avianos están cerca: el espectador puede girar para verlos de cerca. |
@@ -24,7 +24,7 @@
 | 0:41–0:48 | 4 · El paso del tiempo | Aparecen linajes, entre ellos fósiles de Chile y Sudamérica: *Pelagornis chilensis* (5 m de envergadura) planeando, un ave del terror que corre, un pingüino gigante y flamencos. Una bandada cruza el cielo. Las montañas se cubren de nieve. | La órbita continúa y sube un poco. | «…y conquistaron cada rincón del planeta.» | Capas de cantos de aves en distintas direcciones. | Las especies aparecen en 360°, también a los lados y por encima del espectador. |
 | 0:48–0:53 | 5 · Los últimos dinosaurios | El presente, en Chile: Andes nevados, laguna con flamencos chilenos, pingüinos de Humboldt en las rocas, chincoles, cóndores en círculos y gaviotas en V. Un picaflor revolotea a un metro de la cara. Etiqueta: «Tu superviviente hoy: …». Texto: «Hoy · Chile». | La cámara se eleva y se abre hacia la laguna y la cordillera. | «Hoy los llamamos aves.» / «El cóndor, el flamenco, el picaflor: dinosaurios que nunca se fueron.» | Música épica (Re menor → Re mayor), timbales, viento de altura. | El espectador descubre a «su» superviviente convertido en un ave actual. |
 | 0:53–0:56 | 5 · Los últimos dinosaurios | Un cóndor andino baja desde la cordillera y vuela directo hacia el espectador hasta llenar el campo visual con sus alas. | Cámara fija; el ave atraviesa el plano. | — | Ráfaga de aire espacializada que crece y pasa sobre el espectador, crescendo de timbales. | Transición inmersiva: el ave «atraviesa» al espectador. |
-| 0:56–1:00 | Cierre | Fundido a oscuro. Mensaje línea a línea: «66 millones de años después, los dinosaurios siguen entre nosotros. Las aves son sus descendientes. Son los últimos dinosaurios.» Título: **66 MILLONES DE AÑOS: EL ÚLTIMO VUELO**. | Fija. | «Las aves son los últimos dinosaurios.» | Acorde final en Re mayor que se desvanece. | Botón «Volver a vivirlo» (y gatillo del control en VR). |
+| 0:56–1:00 | Cierre | Fundido a oscuro. Mensaje línea a línea: «66 millones de años después, los dinosaurios siguen entre nosotros. Las aves son sus descendientes. Son los últimos dinosaurios.» Título: **66 MILLONES DE AÑOS: EL ÚLTIMO VUELO**. | Fija. | (Mensaje final en pantalla) | Acorde final en Re mayor que se desvanece. | Botón «Volver a vivirlo» (y gatillo del control en VR). |
 
 ---
 
