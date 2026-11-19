@@ -39,3 +39,5 @@ button:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 14px 34
 button:disabled { opacity: .55; cursor: wait; }
 
 .a-enter-vr-button, .a-enter-ar-button { z-index: 30; }
+
+.captura .a-enter-vr { display: none !important; }

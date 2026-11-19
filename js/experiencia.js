@@ -841,6 +841,8 @@
       btn.disabled = false; btn.textContent = 'Comenzar el viaje';
       const comp = scene.components['ultimo-vuelo'];
       if (t0) comp.seek(t0);
+      // ?captura=1: imagen fija sin textos ni pantalla de inicio (para portadas)
+      if (params.get('captura')) { document.getElementById('inicio').style.display = 'none'; comp.hud.plane.visible = false; document.body.classList.add('captura'); return; }
       if (params.get('auto')) { document.getElementById('inicio').classList.add('oculto'); comp.start(t0); }
     };
     if (scene.hasLoaded) ready(); else scene.addEventListener('loaded', ready);
