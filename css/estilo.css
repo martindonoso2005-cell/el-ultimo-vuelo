@@ -1,0 +1,43 @@
+:root {
+  --fondo: #15120f;
+  --tinta: #f6ead8;
+  --suave: #cdbba3;
+  --oro: #ffd98a;
+  --brasa: #ff8a3a;
+}
+html, body { margin: 0; height: 100%; background: var(--fondo); font-family: Montserrat, Arial, sans-serif; color: var(--tinta); }
+
+.overlay {
+  position: fixed; inset: 0; z-index: 20;
+  display: flex; align-items: center; justify-content: center; padding: 16px;
+  background:
+    radial-gradient(ellipse at 70% 20%, rgba(255,138,58,0.25), transparent 60%),
+    linear-gradient(180deg, rgba(21,18,15,0.82), rgba(21,18,15,0.95));
+  transition: opacity .6s ease;
+}
+.overlay.transparente { background: transparent; pointer-events: none; align-items: flex-end; padding-bottom: 6vh; }
+.overlay.transparente .caja { pointer-events: auto; }
+.overlay.oculto { opacity: 0; pointer-events: none; }
+.overlay.oculto * { pointer-events: none !important; }
+
+.caja { max-width: 560px; text-align: center; }
+.caja.chica { max-width: none; }
+.kicker { letter-spacing: .28em; text-transform: uppercase; font-size: 12px; color: var(--suave); margin: 0 0 18px; }
+h1 { font-family: Cinzel, Georgia, serif; font-weight: 700; font-size: clamp(32px, 7vw, 58px); margin: 0; letter-spacing: .04em; line-height: 1.05; }
+h2 { font-family: Cinzel, Georgia, serif; font-weight: 500; font-size: clamp(18px, 3.4vw, 26px); color: var(--oro); letter-spacing: .35em; text-transform: uppercase; margin: 10px 0 22px; }
+.lead { font-weight: 300; font-size: 17px; line-height: 1.55; margin: 0 auto 20px; max-width: 470px; }
+.tips { list-style: none; padding: 0; margin: 0 0 26px; font-size: 14px; color: var(--suave); line-height: 1.9; }
+.tips b { color: var(--tinta); font-weight: 600; }
+
+button {
+  font: 600 16px Montserrat, Arial, sans-serif; letter-spacing: .08em; text-transform: uppercase;
+  color: #1a120c; background: linear-gradient(180deg, #ffe2a6, #ffb562); border: 0; border-radius: 999px;
+  padding: 16px 34px; cursor: pointer; box-shadow: 0 10px 30px rgba(255,138,58,.35);
+  transition: transform .15s ease, box-shadow .15s ease;
+}
+button:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 14px 34px rgba(255,138,58,.5); }
+button:disabled { opacity: .55; cursor: wait; }
+.voz { display: block; margin-top: 16px; font-size: 13px; color: var(--suave); cursor: pointer; }
+.voz input { accent-color: var(--brasa); vertical-align: -2px; margin-right: 6px; }
+
+.a-enter-vr-button, .a-enter-ar-button { z-index: 30; }
