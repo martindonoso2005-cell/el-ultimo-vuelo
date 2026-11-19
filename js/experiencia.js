@@ -40,9 +40,9 @@
     fogC: trackC([[0, '#dcb9a3'], [10, '#dcb9a3'], [14.95, '#fff4e0'], [16.5, '#b0522a'], [21, '#3a2a20'], [23, '#2a2420'], [34, '#2a2420'], [42, '#cdb99a'], [48, '#c9dcea'], [60, '#c9dcea']]),
     fogNear: trackN([[0, 45], [15, 40], [16.5, 30], [21, 4], [23, 1.5], [34, 1.5], [42, 20], [48, 70], [60, 70]]),
     fogFar: trackN([[0, 340], [15, 320], [16.5, 260], [21, 40], [23, 30], [33, 36], [42, 160], [48, 420], [60, 420]]),
-    sunI: trackN([[0, 2.2], [10, 2.2], [14.95, 5], [16.5, 1.8], [21, 0.4], [23, 0.35], [34, 0.45], [42, 1.8], [48, 2.6], [60, 2.6]]),
+    sunI: trackN([[0, 2.2], [10, 2.2], [14.95, 5], [16.5, 1.8], [21, 0.35], [23, 0.08], [34, 0.15], [42, 1.8], [48, 2.6], [60, 2.6]]),
     sunC: trackC([[0, '#ffcf9e'], [14.95, '#ffffff'], [16.5, '#ff8a4a'], [21, '#8a4a30'], [23, '#7a6a5a'], [34, '#7a6a5a'], [42, '#ffe2b8'], [48, '#fff6e8'], [60, '#fff6e8']]),
-    hemiI: trackN([[0, 1.2], [14.95, 2.5], [16.5, 1.1], [21, 0.5], [23, 0.6], [34, 0.65], [42, 1.0], [48, 1.3], [60, 1.3]]),
+    hemiI: trackN([[0, 1.2], [14.95, 2.5], [16.5, 1.1], [21, 0.45], [23, 0.22], [34, 0.28], [42, 1.0], [48, 1.3], [60, 1.3]]),
     hemiSky: trackC([[0, '#ffe8d6'], [16.5, '#ffb08a'], [21, '#6a5244'], [34, '#5a5048'], [42, '#ffeedd'], [48, '#e4f1ff'], [60, '#e4f1ff']]),
     hemiGnd: trackC([[0, '#4a5a2a'], [15.5, '#4a5a2a'], [17, '#ff5a20'], [21, '#4a2014'], [23, '#2a2420'], [34, '#2a2420'], [44, '#4a5a2a'], [60, '#4a5a2a']]),
     ash: trackN([[0, 0], [19, 0], [22.5, 1], [60, 1]]),
@@ -138,7 +138,7 @@
       this.buildEnvironment(); this.buildLife(); this.buildFX();
       this.hud = HUD(this.cam.object3D);
       this.buildEvents();
-      this.update(0, 0);
+      this.actualizar(0, 0);
       window.UV = this;
       this.el.addEventListener('enter-vr', () => { if (!this.running && !this.ended) { document.getElementById('inicio').classList.add('oculto'); this.start(0); } });
     },
@@ -335,13 +335,38 @@
       };
       this.ashPts = mkPts(2600, '#b9b2a8', 0.09);
       this.emberPts = mkPts(700, '#ff8a3a', 0.12, T.AdditiveBlending);
-      // rayo de luz (esperanza)
-      const shG = new T.ConeGeometry(1.6, 40, 14, 1, true); shG.translate(0, 20, 0); shG.rotateX(Math.PI); shG.translate(0, 40, 0);
-      this.shaft = new T.Mesh(shG, new T.MeshBasicMaterial({ color: '#ffe6b0', transparent: true, opacity: 0, blending: T.AdditiveBlending, depthWrite: false, fog: false, side: T.DoubleSide }));
-      root.add(this.shaft);
+      // ===== rayo de luz que atraviesa el polvo y cae sobre los supervivientes =====
+      this.beam = new T.Group(); root.add(this.beam);
+      const beamGeo = (rTop, rBot, h) => {
+        const g = new T.CylinderGeometry(rTop, rBot, h, 24, 6, true); g.translate(0, h / 2, 0);
+        const p = g.attributes.position, c = new Float32Array(p.count * 3);
+        for (let i = 0; i < p.count; i++) { const k = Math.pow(1 - p.getY(i) / h, 1.6); c[i * 3] = c[i * 3 + 1] = c[i * 3 + 2] = k; }
+        g.setAttribute('color', new T.BufferAttribute(c, 3)); return g;
+      };
+      const beamMat = () => new T.MeshBasicMaterial({ color: '#ffe3a6', vertexColors: true, transparent: true, opacity: 0, blending: T.AdditiveBlending, depthWrite: false, fog: false, side: T.DoubleSide });
+      this.beamOuter = new T.Mesh(beamGeo(0.9, 2.2, 30), beamMat()); this.beam.add(this.beamOuter);
+      this.beamCore = new T.Mesh(beamGeo(0.5, 1.5, 24), beamMat()); this.beam.add(this.beamCore);
+      this.beam.rotation.set(-0.2, 0, -0.1); // ligeramente inclinado, como luz que entra entre nubes
+      // charco de luz en el suelo
+      const pool = new T.CircleGeometry(1, 32); pool.rotateX(-Math.PI / 2);
+      this.pool = new T.Mesh(pool, new T.MeshBasicMaterial({ map: this.dot, color: '#ffdd99', transparent: true, opacity: 0, blending: T.AdditiveBlending, depthWrite: false, fog: false }));
+      root.add(this.pool);
+      // luz real que ilumina a las aves (y nada más)
+      this.spot = new T.SpotLight('#ffe2a8', 0, 0, 0.2, 0.55, 0);
+      this.spotTarget = new T.Object3D(); root.add(this.spot, this.spotTarget); this.spot.target = this.spotTarget;
+      // motas de polvo brillando dentro del rayo
+      { const n = 320, g = new T.BufferGeometry(), a = new Float32Array(n * 3);
+        for (let i = 0; i < n; i++) { const r = Math.sqrt(Math.random()) * 2.2, an = Math.random() * 6.283; a[i * 3] = Math.cos(an) * r; a[i * 3 + 1] = Math.random() * 9; a[i * 3 + 2] = Math.sin(an) * r; }
+        g.setAttribute('position', new T.BufferAttribute(a, 3));
+        this.motes = new T.Points(g, new T.PointsMaterial({ color: '#ffe9b8', size: 0.06, map: this.dot, transparent: true, opacity: 0, depthWrite: false, blending: T.AdditiveBlending, fog: false }));
+        this.motes.frustumCulled = false; root.add(this.motes); }
+      // anillos en el suelo que indican que las aves se pueden elegir
+      const ringG = new T.RingGeometry(0.34, 0.42, 40); ringG.rotateX(-Math.PI / 2);
+      this.markers = [0, 1, 2].map(() => { const m = new T.Mesh(ringG, new T.MeshBasicMaterial({ color: '#ffe7a8', transparent: true, opacity: 0, blending: T.AdditiveBlending, depthWrite: false, fog: false })); root.add(m); return m; });
       // brillo bajo el elegido
       this.halo = new T.Sprite(new T.SpriteMaterial({ map: this.dot, color: '#ffd98a', transparent: true, opacity: 0, blending: T.AdditiveBlending, depthWrite: false, fog: false }));
       root.add(this.halo);
+      this.beamC = new T.Vector3();
     },
 
     // ======================= EVENTOS PUNTUALES =======================
@@ -379,7 +404,7 @@
       document.getElementById('fin').classList.add('oculto');
     },
     restart: function () { this.choice = -1; this.choiceT = -1; this.start(0); },
-    seek: function (t) { this.T = t; this.evI = 0; while (this.evI < this.events.length && this.events[this.evI][0] < t) this.evI++; this.update(t, 0); },
+    seek: function (t) { this.T = t; this.evI = 0; while (this.evI < this.events.length && this.events[this.evI][0] < t) this.evI++; this.actualizar(t, 0); },
     choose: function (i) {
       if (this.choice >= 0 || this.T < 24 || this.T > 33.4) return;
       this.choice = i; this.choiceT = this.T;
@@ -388,15 +413,15 @@
     },
 
     tick: function (time, dtMs) {
-      if (!this.running) { if (!this.ended) this.update(this.T, 0); return; }
+      if (!this.running) { if (!this.ended) this.actualizar(this.T, 0); return; }
       const dt = Math.min(0.05, (dtMs || 16) / 1000);
       this.T += dt;
       while (this.evI < this.events.length && this.events[this.evI][0] <= this.T) { try { this.events[this.evI][1](); } catch (e) { console.warn(e); } this.evI++; }
-      if (this.T >= DUR) { this.T = DUR; this.running = false; this.ended = true; this.update(DUR, dt); Sonido.stopAll(); document.getElementById('fin').classList.remove('oculto'); return; }
-      this.update(this.T, dt);
+      if (this.T >= DUR) { this.T = DUR; this.running = false; this.ended = true; this.actualizar(DUR, dt); Sonido.stopAll(); document.getElementById('fin').classList.remove('oculto'); return; }
+      this.actualizar(this.T, dt);
     },
 
-    update: function (t, dt) {
+    actualizar: function (t, dt) {
       this.updateEnv(t);
       this.updateCamera(t);
       this.updateDinos(t);
@@ -497,11 +522,11 @@
         if (t >= 10 && t < 15.5) { roar = win(t, 10.9, 13.6, 0.4); yaw = Math.PI + sm(10, 11, t) * 0.5; }
         if (t >= 15.5) { const k = t - 15.5; const d = new T.Vector3(-1, 0, -0.35).normalize(); x = 7 + d.x * k * 7; z = 2.5 + d.z * k * 7; speed = 2; yaw = Math.atan2(-d.z, d.x); }
         o.position.set(x, LP.heightAt(x, z), z); o.rotation.y = yaw; tr.anim(t, speed, roar);
-        tr.mats[0].color.set('#8b5a3c');
+        tr.mats[0].color.set('#ffffff');
       } else if (t < 40) {
         o.visible = true; o.rotation.set(Math.PI / 2, 0.4, 0); tr.anim(0, 0, 0.3);
         o.position.set(8, 1.1 - sm(34, 40, t) * 3.5, -9);
-        tr.mats[0].color.set('#2e2823');
+        tr.mats[0].color.set('#3a3330');
       } else o.visible = false;
       // pterosaurios
       this.pteros.forEach(p => {
@@ -562,16 +587,36 @@
           b.apply(this.tmpP);
         } else if (t < 34) b.apply(b.base);
         // brillo al elegir / al apuntar
-        const glow = (this.hover === i && ch < 0 && t > 24 && t < 33.4) ? 0.35 : (i === ch && t > 24 && t < 36 ? win(t, this.choiceT, this.choiceT + 3, 0.3) * 0.8 : 0);
+        // brillo: un leve contorno cálido dentro del rayo, más fuerte al apuntar y al elegir
+        const inBeam = win(t, 23.4, 34.5, 1) * (ch < 0 || ch === i ? 1 : 1 - sm(this.choiceT, this.choiceT + 1.2, t));
+        const glow = inBeam * 0.14 + ((this.hover === i && ch < 0 && t > 24 && t < 33.4) ? 0.35 : (i === ch && t > 24 && t < 36 ? win(t, this.choiceT, this.choiceT + 3, 0.3) * 0.7 : 0));
         b.mats.body.emissive.setRGB(glow * 0.6, glow * 0.4, glow * 0.15); b.mats.wing.emissive.copy(b.mats.body.emissive);
+        b.mats.head.emissive.copy(b.mats.body.emissive); b.mats.belly.emissive.copy(b.mats.body.emissive);
         b.anim(t, mode);
+        // anillo indicador bajo cada ave mientras se puede elegir
+        const mk = this.markers[i]; const ma = (t > 24.2 && t < 33.6 && ch < 0) ? sm(24.2, 25, t) * (0.45 + 0.25 * Math.sin(t * 4 + i * 2) + (this.hover === i ? 0.4 : 0)) : 0;
+        mk.material.opacity = ma; mk.visible = ma > 0.01; mk.position.set(o.position.x, o.position.y + 0.03, o.position.z);
       });
-      // rayo de luz y halo sobre el elegido
-      const target = ch >= 0 ? this.surv[ch].el.object3D.position : this.survSpots[1];
-      const shA = (ch >= 0 ? win(t, Math.max(28, this.choiceT), 39, 1.5) : win(t, 28, 33, 1.5)) * 0.2;
-      this.shaft.material.opacity = shA; this.shaft.visible = shA > 0.002; this.shaft.position.set(target.x, 0, target.z);
+      // rayo de luz: llega por el polvo y envuelve a los tres; al elegir se cierra sobre uno
+      const narrow = ch >= 0 ? sm(this.choiceT, this.choiceT + 1.5, t) : 0;
+      const chosenPos = ch >= 0 ? this.surv[ch].el.object3D.position : this.survSpots[1];
+      this.beamC.set(0, 0, 4.45).lerp(this.v3.set(chosenPos.x, 0, chosenPos.z), narrow);
+      const bA = sm(22.6, 24.2, t) * (1 - sm(34.5, 38.5, t));
+      const flick = 1 + Math.sin(t * 2.3) * 0.05 + Math.sin(t * 5.1) * 0.03;
+      const wide = 1 - narrow * 0.55;
+      this.beam.visible = this.pool.visible = this.motes.visible = bA > 0.003;
+      this.beam.position.copy(this.beamC); this.beam.scale.set(wide, 1, wide);
+      this.beamOuter.material.opacity = bA * 0.07 * flick; this.beamCore.material.opacity = bA * 0.09 * flick;
+      this.pool.position.set(this.beamC.x, 0.02, this.beamC.z); this.pool.scale.setScalar(2.8 * wide); this.pool.material.opacity = bA * 0.22;
+      this.motes.position.copy(this.beamC); this.motes.scale.set(wide, 1, wide); this.motes.material.opacity = bA * 0.9;
+      const ma = this.motes.geometry.attributes.position.array;
+      for (let k = 1; k < ma.length; k += 3) { ma[k] -= dt * 0.25; if (ma[k] < 0) ma[k] += 9; }
+      this.motes.geometry.attributes.position.needsUpdate = true;
+      this.spot.intensity = bA * 3.2 * flick; this.spot.visible = bA > 0.003;
+      this.spot.angle = 0.2 - narrow * 0.09;
+      this.spot.position.set(this.beamC.x + 1.6, 14, this.beamC.z - 3.5); this.spotTarget.position.copy(this.beamC);
       const ha = ch >= 0 ? win(t, this.choiceT, this.choiceT + 3.5, 0.4) * 0.8 : 0;
-      this.halo.material.opacity = ha; this.halo.visible = ha > 0.01; this.halo.position.set(target.x, 0.35, target.z); this.halo.scale.setScalar(1.6);
+      this.halo.material.opacity = ha; this.halo.visible = ha > 0.01; this.halo.position.set(chosenPos.x, 0.35, chosenPos.z); this.halo.scale.setScalar(1.6);
       // retícula: solo durante la interacción
       const show = t > 24.2 && t < 33.4 && this.choice < 0;
       if (this.reticle && this.reticle.object3D.visible !== show) this.reticle.object3D.visible = show;

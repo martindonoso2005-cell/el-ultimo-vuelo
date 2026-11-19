@@ -213,74 +213,150 @@ window.LP = (function () {
     return mesh(jitter(new T.CylinderGeometry(1, 1.25, 1, 7, 2), 0.18, seed), M.rock, null, null, [sx, sy, sz]);
   }
 
-  // ---------- dinosaurios no avianos ----------
+  // ---------- dinosaurios no avianos (más realistas) ----------
+  // Piel: dorso oscuro, flancos, vientre claro y rayas, horneado en colores de vértice
+  const _a = new T.Vector3(), _b = new T.Vector3(), _c = new T.Vector3(), _n = new T.Vector3(), _e = new T.Vector3();
+  function skin(geo, pal, seed, stripeF) {
+    geo = geo.index ? geo.toNonIndexed() : geo; geo.computeVertexNormals();
+    const p = geo.attributes.position, n = p.count, col = new Float32Array(n * 3);
+    const top = new T.Color(pal.top), side = new T.Color(pal.side), belly = new T.Color(pal.belly), c = new T.Color(); const r = rng(seed || 3);
+    for (let f = 0; f < n; f += 3) {
+      _a.fromBufferAttribute(p, f); _b.fromBufferAttribute(p, f + 1); _c.fromBufferAttribute(p, f + 2);
+      _n.subVectors(_b, _a).cross(_e.subVectors(_c, _a)).normalize();
+      const ny = _n.y, cx = (_a.x + _b.x + _c.x) / 3;
+      if (ny > 0) c.copy(side).lerp(top, smooth(-0.05, 0.75, ny)); else c.copy(side).lerp(belly, smooth(0.05, 0.6, -ny));
+      if (stripeF && ny > 0.05 && Math.sin(cx * stripeF + (seed || 0)) > 0.5) c.multiplyScalar(0.7);
+      c.multiplyScalar(0.93 + r() * 0.14);
+      for (let k = 0; k < 3; k++) { col[(f + k) * 3] = c.r; col[(f + k) * 3 + 1] = c.g; col[(f + k) * 3 + 2] = c.b; }
+    }
+    geo.setAttribute('color', new T.BufferAttribute(col, 3));
+    return geo;
+  }
+  function ell(rx, ry, rz, det, jit, seed) { const g = new T.IcosahedronGeometry(1, det === undefined ? 1 : det); g.scale(rx, ry, rz); return jitter(g, jit || 0, seed || 1); }
+  function seg(len, r0, r1, radial) { const g = new T.CylinderGeometry(r1, r0, len, radial || 7, 2); g.translate(0, len / 2, 0); g.rotateZ(-Math.PI / 2); return g; }
+  function skinMat() { return msm('#ffffff', { vertexColors: true }); }
+  // cadena articulada (cuello, cola, patas): cada segmento cuelga del anterior
+  function chain(parent, segs, mat, pal, seed, stripe) {
+    let cur = parent; const joints = [];
+    segs.forEach((s, i) => {
+      const j = new T.Group(); if (i > 0) j.position.x = segs[i - 1].len * 0.94;
+      if (s.rot) j.rotation.set(s.rot[0], s.rot[1], s.rot[2]); j.userData.base = j.rotation.clone();
+      cur.add(j);
+      j.add(new T.Mesh(skin(jitter(seg(s.len, s.r0, s.r1, s.radial), Math.min(s.r0, s.r1) * 0.12, seed + i * 7), pal, seed + i, stripe), mat));
+      j.add(new T.Mesh(skin(ell(s.r0 * 1.03, s.r0 * 1.03, s.r0 * 1.03, 1, s.r0 * 0.05, seed + i), pal, seed + i * 3, stripe), mat));
+      joints.push(j); cur = j;
+    });
+    return joints;
+  }
+  function palette(color) {
+    const base = new T.Color(color);
+    return { top: '#' + base.clone().multiplyScalar(0.55).getHexString(), side: '#' + base.getHexString(), belly: '#' + base.clone().lerp(new T.Color('#e8d6b4'), 0.6).getHexString() };
+  }
+
+  // Titanosaurio (saurópodo): cuello largo curvado, patas columnares, osteodermos
   function sauropod(seed, color) {
-    const mb = msm(color || '#8a5d48'), mb2 = msm(new T.Color(color || '#8a5d48').multiplyScalar(0.78));
-    const root = new T.Group(); const body = new T.Group(); root.add(body);
-    body.add(mesh(jitter(new T.IcosahedronGeometry(1, 1), 0.18, seed), mb, [0, 5.4, 0], null, [4.2, 2.3, 2.1]));
-    const neck = new T.Group(); neck.position.set(3.2, 6.2, 0); neck.rotation.z = -0.55; body.add(neck);
-    neck.add(mesh(G.cylUp, mb, null, null, [0.75, 8.6, 0.75]));
-    neck.add(mesh(jitter(new T.IcosahedronGeometry(1, 0), 0.1, seed + 1), mb, [0.35, 8.7, 0], [0, 0, 0.55], [1.2, 0.55, 0.55]));
-    const tail = new T.Group(); tail.position.set(-3.8, 5.6, 0); tail.rotation.z = 0.28; body.add(tail);
-    tail.add(mesh(G.coneNegX, mb, null, null, [10, 1.3, 1.2]));
-    const legs = [[2.3, 1.2], [2.3, -1.2], [-2.3, 1.2], [-2.3, -1.2]].map(([x, z]) => {
-      const g = new T.Group(); g.position.set(x, 4.7, z); g.add(mesh(G.cylDown, mb2, null, null, [0.75, 4.75, 0.75])); root.add(g); return g;
+    const pal = palette(color || '#8a5d48'); const mb = skinMat(); const r = rng(seed);
+    const root = new T.Group(); const body = new T.Group(); body.position.set(0, 5.0, 0); root.add(body);
+    const add = (g, pos, rot) => { const m = new T.Mesh(skin(g, pal, seed, 1.3), mb); if (pos) m.position.set(pos[0], pos[1], pos[2]); if (rot) m.rotation.set(rot[0], rot[1], rot[2]); body.add(m); return m; };
+    add(ell(3.6, 2.0, 1.8, 1, 0.18, seed), [0, 0.25, 0], [0, 0, 0.07]);
+    add(ell(1.9, 2.0, 1.75, 1, 0.12, seed + 1), [2.2, 0.55, 0]);
+    add(ell(1.7, 1.8, 1.65, 1, 0.12, seed + 2), [-2.3, 0.15, 0]);
+    for (let i = 0; i < 7; i++) add(ell(0.35, 0.18, 0.3, 0, 0.05, seed + 10 + i), [-2.4 + i * 0.85, 2.2 - Math.abs(i - 3) * 0.08, (r() - 0.5) * 0.9]);
+    const neckBase = new T.Group(); neckBase.position.set(3.3, 1.2, 0); body.add(neckBase);
+    const neck = chain(neckBase, [0, 1, 2, 3, 4, 5].map(i => ({ len: 1.6, r0: 1.05 - i * 0.12, r1: 0.95 - i * 0.12, rot: [0, 0, i === 0 ? 0.55 : 0.05] })), mb, pal, seed + 20, 1.6);
+    const head = new T.Group(); head.position.x = 1.55; head.rotation.z = -0.82; neck[5].add(head);
+    head.add(new T.Mesh(skin(jitter(seg(1.15, 0.42, 0.26, 6).scale(1, 1.1, 0.85), 0.04, seed), pal, seed), mb));
+    const eyeM = new T.MeshBasicMaterial({ color: '#141010' });
+    for (const s of [1, -1]) head.add(mesh(G.ico0, eyeM, [0.35, 0.18, s * 0.3], null, 0.06));
+    const tailBase = new T.Group(); tailBase.position.set(-3.5, 0.35, 0); tailBase.rotation.y = Math.PI; body.add(tailBase);
+    const tail = chain(tailBase, [0, 1, 2, 3, 4, 5, 6, 7].map(i => ({ len: 1.5, r0: Math.max(0.12, 1.0 - i * 0.12), r1: Math.max(0.08, 0.9 - i * 0.12), rot: [0, 0, i === 0 ? -0.32 : 0.045] })), mb, pal, seed + 40, 1.6);
+    const legs = [[2.3, 1.15], [2.3, -1.15], [-2.3, 1.1], [-2.3, -1.1]].map(([x, z], i) => {
+      const g = new T.Group(); g.position.set(x, -0.2, z); body.add(g);
+      const j = chain(g, [{ len: 2.6, r0: 0.66, r1: 0.52, rot: [0, 0, -Math.PI / 2] }, { len: 2.2, r0: 0.5, r1: 0.48 }], mb, pal, seed + 60 + i * 5, 0);
+      const pad = new T.Mesh(skin(jitter(new T.CylinderGeometry(0.6, 0.66, 0.3, 7), 0.03, seed), pal, seed), mb); pad.position.set(2.1, 0, 0); pad.rotation.z = Math.PI / 2; j[1].add(pad);
+      return j;
     });
     return {
-      obj: root, mats: [mb, mb2],
+      obj: root, mats: [mb, mb],
       anim(t, speed) {
         const ph = t * 1.5;
-        legs.forEach((l, i) => { l.rotation.z = Math.sin(ph + (i === 0 || i === 3 ? 0 : Math.PI)) * 0.22 * speed; });
-        body.position.y = Math.abs(Math.sin(ph)) * 0.1 * speed;
-        neck.rotation.z = -0.55 + Math.sin(t * 0.6 + seed) * 0.08;
-        tail.rotation.y = Math.sin(t * 0.9 + seed) * 0.15;
+        legs.forEach((l, i) => { const a = Math.sin(ph + (i === 0 || i === 3 ? 0 : Math.PI)) * speed; l[0].rotation.z = -Math.PI / 2 + a * 0.2; l[1].rotation.z = Math.max(0, a) * 0.25; });
+        body.position.y = 5.0 + Math.abs(Math.sin(ph)) * 0.1 * speed;
+        neck.forEach((j, i) => { j.rotation.y = Math.sin(t * 0.6 + seed - i * 0.4) * 0.05; j.rotation.z = j.userData.base.z + Math.sin(t * 0.5 + seed) * 0.02; });
+        tail.forEach((j, i) => { j.rotation.y = Math.sin(t * 1.1 + seed - i * 0.55) * (0.04 + i * 0.012); });
       }
     };
   }
 
+  // Tiranosaurio (terópodo): cráneo profundo con mandíbula, patas digitígradas, cola articulada
   function theropod(seed, color) {
     const r = rng(seed);
-    const mb = msm(color || '#8b5a3c'), md = msm('#2a1d16'), mt = msm('#efe6d2');
-    const meye = new T.MeshBasicMaterial({ color: '#ffc23a' });
-    const root = new T.Group(); const body = new T.Group(); root.add(body);
-    body.add(mesh(jitter(new T.IcosahedronGeometry(1, 1), 0.15, seed), mb, [0, 3.6, 0], [0, 0, 0.12], [2.4, 1.35, 1.1]));
-    const neck = new T.Group(); neck.position.set(1.9, 4.2, 0); body.add(neck);
-    neck.add(mesh(G.ico0, mb, [0.4, 0.25, 0], [0, 0, -0.6], [0.95, 0.75, 0.62]));
-    const head = new T.Group(); head.position.set(1.0, 0.6, 0); neck.add(head);
-    head.add(mesh(jitter(new T.IcosahedronGeometry(1, 0), 0.12, seed + 2), mb, [0.7, 0.15, 0], null, [1.3, 0.6, 0.62]));
-    const jaw = new T.Group(); jaw.position.set(0.05, -0.15, 0); head.add(jaw);
-    jaw.add(mesh(G.ico0, mb, [0.68, -0.15, 0], null, [1.05, 0.25, 0.5]));
-    for (let i = 0; i < 4; i++) for (const s of [1, -1]) head.add(mesh(G.coneDown, mt, [0.55 + i * 0.28, -0.1, s * 0.4], null, [0.05, 0.2, 0.05]));
-    for (const s of [1, -1]) head.add(mesh(G.ico0, meye, [0.95, 0.48, s * 0.43], null, 0.09));
-    for (let i = 0; i < 10; i++) {
-      const x = -2.2 + i * 0.5;
-      body.add(mesh(G.coneUp, md, [x, 4.75 - Math.abs(x - 0.4) * 0.2, (r() - 0.5) * 0.3], [(r() - 0.5) * 0.6, 0, 0.6], [0.12, 0.7 + r() * 0.6, 0.12]));
+    const pal = palette(color || '#8b5a3c'); const mb = skinMat(); const md = msm('#2a1d16'), mt = msm('#efe6d2'), mc = msm('#2b2420');
+    const root = new T.Group(); const body = new T.Group(); body.position.set(0, 3.45, 0); root.add(body);
+    const add = (g, pos, rot, par) => { const m = new T.Mesh(skin(g, pal, seed, 1.8), mb); if (pos) m.position.set(pos[0], pos[1], pos[2]); if (rot) m.rotation.set(rot[0], rot[1], rot[2]); (par || body).add(m); return m; };
+    add(ell(1.9, 1.1, 0.9, 1, 0.1, seed), [0.5, 0.2, 0], [0, 0, 0.14]);
+    add(ell(1.05, 1.0, 0.95, 1, 0.08, seed + 1), [1.6, 0.4, 0], [0, 0, 0.3]);
+    add(ell(1.1, 1.05, 0.85, 1, 0.08, seed + 2), [-0.6, 0.05, 0]);
+    // cuello y cabeza
+    const neckBase = new T.Group(); neckBase.position.set(2.2, 0.75, 0); body.add(neckBase);
+    const neck = chain(neckBase, [{ len: 0.85, r0: 0.72, r1: 0.62, rot: [0, 0, 0.75] }, { len: 0.6, r0: 0.62, r1: 0.56, rot: [0, 0, -0.55] }], mb, pal, seed + 5, 1.8);
+    const head = new T.Group(); head.position.x = 0.55; head.rotation.z = -0.3; neck[1].add(head);
+    add(seg(1.95, 0.6, 0.34, 6).scale(1, 1.3, 0.82), [-0.25, 0.12, 0], null, head);
+    const iris = new T.MeshBasicMaterial({ color: '#e0901f' }), pupil = new T.MeshBasicMaterial({ color: '#0d0905' });
+    for (const s of [1, -1]) {
+      add(ell(0.32, 0.12, 0.13, 0, 0.02, seed + 3), [0.35, 0.68, s * 0.27], null, head);
+      head.add(mesh(G.ico0, iris, [0.4, 0.48, s * 0.35], null, 0.085));
+      head.add(mesh(G.ico0, pupil, [0.46, 0.48, s * 0.39], null, 0.04));
+      head.add(mesh(G.ico0, mc, [1.55, 0.22, s * 0.16], null, 0.05));
+      for (let i = 0; i < 5; i++) { const x = 0.45 + i * 0.24; head.add(mesh(G.coneDown, mt, [x, -0.2, s * (0.3 - (x - 0.4) * 0.11)], null, [0.04, 0.17, 0.04])); }
     }
-    const tail = new T.Group(); tail.position.set(-2.0, 3.8, 0); tail.rotation.z = 0.06; body.add(tail);
-    tail.add(mesh(G.coneNegX, mb, null, null, [6.5, 1.0, 0.9]));
-    for (let i = 0; i < 6; i++) tail.add(mesh(G.coneUp, md, [-4.5 - i * 0.35, 0.2, (r() - 0.5) * 0.4], [(r() - 0.5) * 1.5, 0, 0.9 + r() * 0.6], [0.08, 0.6 + r() * 0.5, 0.08]));
-    for (const s of [1, -1]) body.add(mesh(G.cylDown, mb, [1.5, 3.4, s * 0.65], [0, 0, -0.7], [0.15, 0.8, 0.15]));
+    const jaw = new T.Group(); jaw.position.set(-0.15, -0.22, 0); head.add(jaw);
+    jaw.add(new T.Mesh(skin(jitter(seg(1.75, 0.38, 0.2, 6).scale(1, 0.72, 0.85), 0.02, seed + 4), { top: pal.side, side: pal.side, belly: pal.belly }, seed), mb));
+    for (const s of [1, -1]) for (let i = 0; i < 4; i++) { const x = 0.6 + i * 0.25; jaw.add(mesh(G.coneUp, mt, [x, 0.12, s * (0.22 - i * 0.03)], null, [0.035, 0.13, 0.035])); }
+    // cola
+    const tailBase = new T.Group(); tailBase.position.set(-1.45, 0.15, 0); tailBase.rotation.y = Math.PI; body.add(tailBase);
+    const tail = chain(tailBase, [1.25, 1.2, 1.15, 1.1, 1.0, 0.9].map((len, i) => ({ len, r0: 0.85 - i * 0.13, r1: 0.74 - i * 0.12, rot: [0, 0, i === 0 ? -0.06 : 0.02] })), mb, pal, seed + 10, 1.8);
+    // plumas oscuras en el dorso (como la referencia)
+    for (let i = 0; i < 9; i++) { const x = -1.2 + i * 0.45; body.add(mesh(G.coneUp, md, [x, 1.15 + Math.sin(i) * 0.05 - Math.abs(x - 0.6) * 0.12, (r() - 0.5) * 0.25], [(r() - 0.5) * 0.5, 0, 0.75], [0.07, 0.45 + r() * 0.35, 0.07])); }
+    for (let i = 0; i < 4; i++) neck[0].add(mesh(G.coneUp, md, [0.15 + i * 0.2, 0.62, (r() - 0.5) * 0.2], [0, 0, 0.9], [0.06, 0.4 + r() * 0.2, 0.06]));
+    // brazos diminutos
+    for (const s of [1, -1]) {
+      const g = new T.Group(); g.position.set(2.0, -0.25, s * 0.62); body.add(g);
+      const a = chain(g, [{ len: 0.45, r0: 0.13, r1: 0.1, rot: [0, 0, -1.3] }, { len: 0.35, r0: 0.09, r1: 0.06, rot: [0, 0, 1.0] }], mb, pal, seed + 30, 0);
+      for (const k of [1, -1]) a[1].add(mesh(G.coneX, mc, [0.33, 0, k * 0.04], [0, 0, -0.5], [0.12, 0.03, 0.03]));
+    }
+    // patas digitígradas: muslo, tibia, metatarso y 3 dedos
     const legs = [1, -1].map(s => {
-      const hip = new T.Group(); hip.position.set(0.1, 3.3, s * 0.8); root.add(hip);
-      hip.add(mesh(G.ico0, mb, [0, -0.5, 0], null, [0.8, 1.2, 0.55]));
-      const shin = new T.Group(); shin.position.set(0, -1.4, 0); hip.add(shin);
-      shin.add(mesh(G.cylDown, mb, null, null, [0.28, 1.75, 0.28]));
-      shin.add(mesh(G.ico0, mb, [0.35, -1.8, 0], null, [0.65, 0.15, 0.35]));
-      return { hip, shin };
+      const g = new T.Group(); g.position.set(-0.25, -0.1, s * 0.75); body.add(g);
+      const j = chain(g, [
+        { len: 1.5, r0: 0.55, r1: 0.36, rot: [0, 0, -Math.PI / 2 + 0.35] },
+        { len: 1.3, r0: 0.32, r1: 0.22, rot: [0, 0, -0.7] },
+        { len: 0.85, r0: 0.2, r1: 0.16, rot: [0, 0, 0.6] }
+      ], mb, pal, seed + 40 + s, 0);
+      const thigh = new T.Mesh(skin(ell(0.85, 0.58, 0.48, 1, 0.05, seed + 50), pal, seed, 1.8), mb); thigh.position.set(0.45, 0.05, 0); j[0].add(thigh);
+      const foot = new T.Group(); foot.position.x = 0.8; foot.rotation.z = Math.PI / 2 - 0.25; j[2].add(foot);
+      [-0.32, 0, 0.32].forEach(a => foot.add(mesh(G.coneX, mc, [0, -0.1, 0], [0, a, 0], [0.55, 0.11, 0.11])));
+      return j;
     });
     return {
       obj: root, mats: [mb, md],
       anim(t, speed, roar) {
+        roar = roar || 0;
         const ph = t * (speed > 1.5 ? 9 : 3.2);
-        const amp = Math.min(1, speed) * (speed > 1.5 ? 0.75 : 0.45);
+        const amp = Math.min(1, speed) * (speed > 1.5 ? 0.6 : 0.38);
         legs.forEach((l, i) => {
           const a = Math.sin(ph + i * Math.PI);
-          l.hip.rotation.z = a * amp; l.shin.rotation.z = Math.max(0, -a) * amp * 0.6;
+          l[0].rotation.z = -Math.PI / 2 + 0.35 + a * amp;
+          l[1].rotation.z = -0.7 - Math.max(0, -a) * amp * 0.9;
+          l[2].rotation.z = 0.6 + Math.max(0, -a) * amp * 0.6;
         });
-        body.position.y = Math.abs(Math.sin(ph)) * 0.15 * Math.min(1, speed);
-        neck.rotation.z = (roar || 0) * 0.45 + Math.sin(t * 2.0) * 0.04;
-        jaw.rotation.z = -(roar || 0) * (0.45 + Math.sin(t * 30) * 0.04);
-        tail.rotation.y = Math.sin(ph * 0.5) * 0.12;
+        body.position.y = 3.45 + Math.abs(Math.sin(ph)) * 0.12 * Math.min(1, speed) - (speed > 1.5 ? 0.15 : 0);
+        body.rotation.z = Math.sin(ph * 2) * 0.015 * speed - (speed > 1.5 ? 0.06 : 0);
+        neck[0].rotation.z = 0.75 + roar * 0.4 + Math.sin(t * 1.3) * 0.03;
+        head.rotation.z = -0.3 + roar * 0.25 + Math.sin(t * 1.7) * 0.03;
+        head.rotation.y = Math.sin(t * 0.7 + seed) * 0.12 * (1 - roar);
+        jaw.rotation.z = -roar * (0.5 + Math.sin(t * 30) * 0.04) - Math.max(0, Math.sin(t * 0.9)) * 0.04;
+        tail.forEach((j, i) => { j.rotation.y = Math.sin(ph * 0.5 - i * 0.6) * (0.04 + i * 0.015) + Math.sin(t * 0.8 - i * 0.4) * 0.03; });
       }
     };
   }
@@ -312,9 +388,9 @@ window.LP = (function () {
 
   const SP = {
     raptor: { size: 1.7, bodyLen: 0.55, neckLen: 0.16, neckAngle: 0.7, beakLen: 0.17, beakThick: 1.6, teeth: 1, tailLen: 0.8, tailFan: 0.2, wingSpan: 0.55, legLen: 0.32, crest: 0.4, pitch: 0.05, body: '#7b5136', belly: '#b98e62', wing: '#4b3324', head: '#6e4630', beak: '#5a3b2a', leg: '#3d2f25' },
-    survA: { size: 0.8, bodyLen: 0.45, neckLen: 0.1, neckAngle: 0.55, beakLen: 0.13, beakThick: 1.15, teeth: 1, tailLen: 0.42, tailFan: 0.35, wingSpan: 0.9, wingChord: 0.9, legLen: 0.18, crest: 0.25, body: '#9a5530', belly: '#d9a774', wing: '#5b2d18', head: '#7a3d20', beak: '#4a3528', leg: '#4a3a30' },
-    survB: { size: 0.8, bodyLen: 0.45, neckLen: 0.1, neckAngle: 0.55, beakLen: 0.13, beakThick: 1.15, teeth: 1, tailLen: 0.42, tailFan: 0.35, wingSpan: 0.9, wingChord: 0.9, legLen: 0.18, crest: 0.25, body: '#5c6b7a', belly: '#c9d2d8', wing: '#36414d', head: '#2f3842', beak: '#3a3a3a', leg: '#3a3a3a' },
-    survC: { size: 0.8, bodyLen: 0.45, neckLen: 0.1, neckAngle: 0.55, beakLen: 0.13, beakThick: 1.15, teeth: 1, tailLen: 0.42, tailFan: 0.35, wingSpan: 0.9, wingChord: 0.9, legLen: 0.18, crest: 0.25, body: '#4f7a4a', belly: '#cfd8a8', wing: '#2f5a3a', head: '#3a6a55', beak: '#353a30', leg: '#3a3a30' },
+    survA: { size: 1.0, bodyLen: 0.45, neckLen: 0.1, neckAngle: 0.55, beakLen: 0.13, beakThick: 1.15, teeth: 1, tailLen: 0.42, tailFan: 0.35, wingSpan: 0.9, wingChord: 0.9, legLen: 0.18, crest: 0.25, body: '#9a5530', belly: '#d9a774', wing: '#5b2d18', head: '#7a3d20', beak: '#4a3528', leg: '#4a3a30' },
+    survB: { size: 1.0, bodyLen: 0.45, neckLen: 0.1, neckAngle: 0.55, beakLen: 0.13, beakThick: 1.15, teeth: 1, tailLen: 0.42, tailFan: 0.35, wingSpan: 0.9, wingChord: 0.9, legLen: 0.18, crest: 0.25, body: '#5c6b7a', belly: '#c9d2d8', wing: '#36414d', head: '#2f3842', beak: '#3a3a3a', leg: '#3a3a3a' },
+    survC: { size: 1.0, bodyLen: 0.45, neckLen: 0.1, neckAngle: 0.55, beakLen: 0.13, beakThick: 1.15, teeth: 1, tailLen: 0.42, tailFan: 0.35, wingSpan: 0.9, wingChord: 0.9, legLen: 0.18, crest: 0.25, body: '#4f7a4a', belly: '#cfd8a8', wing: '#2f5a3a', head: '#3a6a55', beak: '#353a30', leg: '#3a3a30' },
     early: { size: 1.05, bodyLen: 0.48, neckLen: 0.11, neckAngle: 0.5, beakLen: 0.15, beakThick: 1.05, teeth: 0, tailLen: 0.06, tailFan: 0.7, wingSpan: 1.25, wingChord: 1, legLen: 0.2, crest: 0.15 },
     condor: { size: 2.4, bodyLen: 0.6, bodyH: 1.05, neckLen: 0.12, neckAngle: 0.45, headSize: 1.05, beakLen: 0.11, beakThick: 1.6, beakBend: 0.35, teeth: 0, crest: 0.55, collar: 1, tailLen: 0, tailFan: 0.6, wingSpan: 2.5, wingChord: 1.25, legLen: 0.17, legThick: 1.4, pitch: 0.25, flapSpeed: 5, body: '#1c1c21', belly: '#25252c', wing: '#2b2b33', head: '#9e5a52', beak: '#d8ccb0', leg: '#7a7570' },
     pinguino: { size: 1.3, bodyLen: 0.5, bodyH: 1.6, bodyW: 1.1, neckLen: 0.03, neckAngle: 0.2, beakLen: 0.13, beakThick: 1.2, teeth: 0, tailLen: 0, tailFan: 0.1, wingSpan: 0.45, wingChord: 0.55, legLen: 0.05, legThick: 1.5, pitch: 1.35, crest: 0, collar: 0.7, flapSpeed: 8, body: '#23262c', belly: '#f1f0ea', wing: '#23262c', head: '#23262c', beak: '#2a2a2a', leg: '#e0a0a0' },
