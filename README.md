@@ -6,7 +6,7 @@
 **Concurso:** Chile Re-Descubre · Congreso Futuro (ACHIPEC, CRTIC)
 
 - **Experiencia publicada:** https://martindonoso2005-cell.github.io/el-ultimo-vuelo/
-- **Cápsula audiovisual (1 min):** _enlace pendiente: se agrega al subir el video_
+- **Cápsula audiovisual (1 min, 16:9, MP4 H.264):** [ver video](video/capsula-el-ultimo-vuelo.mp4) · [verlo en el navegador](https://martindonoso2005-cell.github.io/el-ultimo-vuelo/video/capsula-el-ultimo-vuelo.mp4)
 - **Guion técnico completo:** [GUION.md](GUION.md)
 
 ---
@@ -69,7 +69,11 @@ js/sonido.js        audio espacial generado con Web Audio (sin archivos)
 js/experiencia.js   línea de tiempo de 60 s, escenas, interacción y textos en pantalla
 GUION.md            guion técnico segundo a segundo y notas científicas
 iniciar.bat         servidor local en Windows
+video/capsula-el-ultimo-vuelo.mp4   cápsula audiovisual de 60 s para el concurso
 ```
+
+## Cápsula audiovisual
+[Video de 60 s](video/capsula-el-ultimo-vuelo.mp4), horizontal 16:9 (1920×1080), MP4 H.264 con audio AAC. Está grabado desde la propia experiencia, con su imagen y su sonido espacial. Muestra el relato completo y la interacción: en el segundo 28 el espectador elige al superviviente que se convierte en cóndor andino.
 
 ## Para editar
 - Saltar a un segundo: `index.html?t=34` (y `&auto=1` para que parta sola).
